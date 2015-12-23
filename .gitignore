@@ -1,3 +1,4 @@
 *.json
 *.osm
 *.out
+*.pyc
