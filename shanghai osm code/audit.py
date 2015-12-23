@@ -92,7 +92,7 @@ def detect_language(name):
 
 #Used - with default settings, translates inou
 def translate_language(name,target='zh',source='en'):
-    #Dictionary fo
+    #Dictionary keeps a list of already translated strings so that I was charged less with the google translate api
     translated_dict = {
         "East Zhu An Bang Road":"东诸安浜路",
         "Tomson Golf Garden":"汤臣高尔夫花园",
