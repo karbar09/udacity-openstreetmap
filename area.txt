@@ -1,0 +1,10 @@
+Link: http://www.openstreetmap.org/relation/913067
+
+Area: Shanghai, China
+A subarea of china, this region extends into the pacific ocean and includes 12 major districts as well public transportation info.
+
+Why?
+
+I am currently living in China. I am not fluent in mandarin, but I can recognize some basic characters (such as street types), and thought it would be interesting to see what kind of inconsistencies and localization problems might arrise in this data.
+
+
