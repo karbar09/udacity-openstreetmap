@@ -128,7 +128,57 @@ So, the top 10% of users account for nearly 95 % of all the contributions.
 
 #Additional Ideas
 ##Reliability Scores
-    I think it would be great if each tag in the osm file has an associated reliability score. The motivation behind this is to assure other correctors they can ignore a particular data and focus on auditing or cleaning up other other data. I think the reliability score should be a function of the # of contributors that have "checked" or "verified" a record, weighted by their influence (this is a contributor score based on how many verified rows they've contributed to OSM). This could allow a potential contributor to direct their auditing focus to specific rows in the data that are under-verified.
+I think it would be great if each tag in the osm file has an associated reliability score. The motivation behind this is to assure other correctors they can ignore a particular data and focus on auditing or cleaning up other other data. I think the reliability score should be a function of the # of contributors that have "checked" or "verified" a record, weighted by their influence (this is a contributor score based on how many verified rows they've contributed to OSM). This could allow a potential contributor to direct their auditing focus to specific rows in the data that are under-verified. 
+
+###Implementation -- Changes to schema
+So, let's quickly review the osm xml structure: nodes, ways, and relations. Within each of these primitives, users can assign extra tags. For example, a node is just a point. But, an additional tag can used to mark this point as a standalone object such as a stoplight or a well. Now, to implement a reliability system, I would advocate for the addition of a couple more tags to each node (way, and relation). For example:
+
+Before:
+
+    <node id="1" version="1" changeset="1" lat="54.045134" lon="12.2539381" user="Karthik" uid="1" visible="true" timestamp="2015-12-26T09:43:19Z">
+      <tag k="name" v="Neu Broderstorf"/>
+      <tag k="traffic_sign" v="city_limit"/>
+     </node>
+
+After:
+
+    <node id="1" version="1" changeset="1" lat="54.045134" lon="12.2539381" user="Karthik" uid="1" visible="true" timestamp="2015-12-26T09:43:19Z" >
+      <tag k="name" v="Neu Broderstorf"/>
+      <tag k="traffic_sign" v="city_limit"/>
+      <checkins users=3 last_cid=3 score=>
+        <tag cid = 1 user="Karthik" timestamp="2015-12-26T23:31:00Z" reliability_score_at_checkin="3"/>
+        <tag cid = 2 user="Jimbo" timestamp="2015-12-28T23:31:00Z" reliability_score_at_checkin="0"/>
+        <tag cid = 3 user="Ben" timestamp="2015-12-29T23:31:00Z" reliability_score_at_checkin="16"/>
+      </checkins>
+     </node>
+
+In the xml entry above (After), I have added a primitive within the node element called "checkins". This section will capture any and all information about who/how/when contributors validated this entry. The checkins header contains some summary information about how many users have verified this point, and the cid (checkin id) of the most recent verification, as well as a score value which is the reliability score for this entry. This score would be a function of the sub tags, and I would propose using something like a sigmoid function of the reliability scores of the contributors to calculate this.
+
+###What about modifying an existing entry?
+Even with these changes, and assuming that we have the appropriate functions in place to calculate reliability scores, I can see a whole host questions that we would need to address in order to implement this correctly. For example, let's assume we're looking to verify the entry above. We happen to be at the lat/lon specified above and there is in fact NO city limits traffic sign. Maybe the city took it down. How should we record such a change? Do we create a new entry and mark this one as void or invalid? Or, should we modify this entry? And, if we can modify this entry, what happens if our reliability score is low (maybe we are a new user)? Do we need to wait until we get some sort quorom for this entry change? We need a framework that can manage updates and accept changes in an automated way when enough of the community can agree upon it. 
+
+###Reliability for nodes versus ways and relations
+OSM does a great job of defining complex structures from building blocks. 
+- Ways are made up of (between 2 and 2000) nodes are typically linear separators.
+- Relations can be composed of two or more members (nodes, ways and/or other relations) and can represent a multi-polygon area or a bus routes, etc
+
+Assuming we can verify single node entries, assume there is a way as follows:
+
+    <way id="26659127" user="Masch" uid="55988" visible="true" version="5" changeset="4142606" timestamp="2010-03-16T11:47:08Z">
+      <nd ref="292403538"/>
+      <nd ref="298884289"/>
+      <nd ref="261728686"/>
+      <tag k="highway" v="unclassified"/>
+      <tag k="name" v="Pastower Straße"/>
+     </way>
+
+This way has 3 node references. If each node reference is independently verified, should that influence the reliability of this way? Or, conversely, if a contributor were to verify this way, should that influence the reliability of its sub nodes? I think that indeed both dependencies should be taken into account. But, these are things that need to be thought through and weighted appropriately. And, as we think about how transitive reliability is, we need to consider the extension to relations as well, which are the most complex primitive that osm allows.
+
+###Summary - Reliability
+
+I proposed a very simple implementation of reliability scores. While verifying an existing osm element seems to be simple enough. It is not clear how we should deal with "updates" or "modifications" to existing entries. Intuitively, a reliable modification, backed by a large number of contributors should be "accepted" after a certain quorom, but clearly a framework must be built to support this.
+
+Furthermore, there is a question of how reliable is an entry that is composed of other reliable entries; that is, the transitivity of reliability scores. This is an important issue that needs thought through because osm primitives are building blocks that can be used to construct more complex entries.
 
 ##More Data Exploration With MongoDB
 
